@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AstraBots Orchestration Platform</title>
+    <style>
+        body { font-family: Arial; background: #0f172a; color: white; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+        canvas { background: #1e293b; border-radius: 8px; }
+        .robot-card { margin-bottom: 10px; }
+        .metrics { background: #1e293b; padding: 10px; margin-top: 10px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<h1>AstraBots Orchestration Platform</h1>
+
+<button onclick="startSimulation()">Start Simulation</button>
+<button onclick="resetSimulation()">Reset</button>
+
+<h2>Warehouse Simulation</h2>
+<canvas id="warehouse" width="400" height="400"></canvas>
+
+<h2>Metrics</h2>
+<div class="metrics" id="metrics"></div>
+
+<h2>Log</h2>
+<div id="logs"></div>
+
+<script>
+const canvas = document.getElementById("warehouse");
+const ctx = canvas.getContext("2d");
+
+const shelves = {
+    "Shelf 1": {x:100, y:100},
+    "Shelf 2": {x:300, y:100},
+    "Shelf 3": {x:200, y:250}
+};
+
+function drawGrid(data) {
+    ctx.clearRect(0,0,400,400);
+
+    for (let s in shelves) {
+        ctx.fillStyle = "gray";
+        ctx.fillRect(shelves[s].x-10, shelves[s].y-10, 20, 20);
+        ctx.fillText(s, shelves[s].x-20, shelves[s].y-15);
+    }
+
+    for (let name in data.robots) {
+        const r = data.robots[name];
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, 10, 0, Math.PI*2);
+        ctx.fillStyle = name === "Robot A" ? "#3b82f6" : "#f97316";
+        ctx.fill();
+        ctx.fillText(name, r.x-20, r.y-15);
+    }
+}
+
+async function fetchState() {
+    const res = await fetch('/state');
+    const data = await res.json();
+
+    drawGrid(data);
+
+    document.getElementById("logs").innerHTML = data.logs.join("<br>");
+    document.getElementById("metrics").innerHTML = `
+        Conflicts: ${data.metrics.conflicts} <br>
+        Completed Tasks: ${data.metrics.completed_tasks} <br>
+        Efficiency: ${data.metrics.efficiency}% <br>
+        Runtime: ${data.metrics.runtime}s
+    `;
+}
+
+async function startSimulation() {
+    await fetch('/start', { method: 'POST' });
+}
+
+async function resetSimulation() {
+    await fetch('/reset', { method: 'POST' });
+}
+
+setInterval(fetchState, 100);
+fetchState();
+</script>
+
+</body>
+</html>
