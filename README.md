@@ -85,6 +85,8 @@ Track 2 – Simulation-to-Real Validation
 \## Team Vision
 
 Bridging robotics simulation and production deployment using cloud-native orchestration.
+## Overview
+AstraBots is a simulation-first multi-agent orchestration platform...
 
 
 
