@@ -1,7 +1,12 @@
-Pitch Deck: [Google Drive Link]
-Demo Video: [X Post Link]
+# AstraBots – Simulation-First Robotics Orchestration Platform
 
-\# AstraBots – Simulation-First Robotics Orchestration Platform
+## 🎥 Demo Video
+[Watch Demo](PASTE_X_POST_LINK_HERE)
+
+## 📊 Pitch Deck
+[View Pitch Deck](PASTE_GOOGLE_DRIVE_LINK_HERE)
+
+---
 
 
 
