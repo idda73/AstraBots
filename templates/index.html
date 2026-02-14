@@ -1,84 +1,101 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AstraBots Orchestration Platform</title>
-    <style>
-        body { font-family: Arial; background: #0f172a; color: white; padding: 20px; }
-        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
-        canvas { background: #1e293b; border-radius: 8px; }
-        .robot-card { margin-bottom: 10px; }
-        .metrics { background: #1e293b; padding: 10px; margin-top: 10px; border-radius: 8px; }
-    </style>
+<title>AstraBots Command Center</title>
+<link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
 
-<h1>AstraBots Orchestration Platform</h1>
+<div class="header">
+    <h1>ASTRABOTS</h1>
+    <p>Autonomous Multi-Agent Coordination System</p>
+</div>
 
-<button onclick="startSimulation()">Start Simulation</button>
-<button onclick="resetSimulation()">Reset</button>
+<div class="container">
 
-<h2>Warehouse Simulation</h2>
-<canvas id="warehouse" width="400" height="400"></canvas>
+    <div class="left-panel">
+        <button onclick="startSimulation()">Start Simulation</button>
+        <button onclick="resetSimulation()">Reset</button>
 
-<h2>Metrics</h2>
-<div class="metrics" id="metrics"></div>
+        <h3>Metrics</h3>
+        <div id="metrics"></div>
+    </div>
 
-<h2>Log</h2>
-<div id="logs"></div>
+    <div class="center-panel">
+        <canvas id="grid" width="500" height="500"></canvas>
+    </div>
+
+    <div class="right-panel">
+        <h3>Live Logs</h3>
+        <div id="logs"></div>
+    </div>
+
+</div>
 
 <script>
-const canvas = document.getElementById("warehouse");
+const canvas = document.getElementById("grid");
 const ctx = canvas.getContext("2d");
 
-const shelves = {
-    "Shelf 1": {x:100, y:100},
-    "Shelf 2": {x:300, y:100},
-    "Shelf 3": {x:200, y:250}
-};
+const GRID_SIZE = 8;
+const CELL = 60;
 
-function drawGrid(data) {
-    ctx.clearRect(0,0,400,400);
-
-    for (let s in shelves) {
-        ctx.fillStyle = "gray";
-        ctx.fillRect(shelves[s].x-10, shelves[s].y-10, 20, 20);
-        ctx.fillText(s, shelves[s].x-20, shelves[s].y-15);
-    }
-
-    for (let name in data.robots) {
-        const r = data.robots[name];
+function drawGrid() {
+    ctx.strokeStyle = "#1e3a8a";
+    for (let i = 0; i <= GRID_SIZE; i++) {
         ctx.beginPath();
-        ctx.arc(r.x, r.y, 10, 0, Math.PI*2);
-        ctx.fillStyle = name === "Robot A" ? "#3b82f6" : "#f97316";
-        ctx.fill();
-        ctx.fillText(name, r.x-20, r.y-15);
+        ctx.moveTo(i*CELL,0);
+        ctx.lineTo(i*CELL,GRID_SIZE*CELL);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0,i*CELL);
+        ctx.lineTo(GRID_SIZE*CELL,i*CELL);
+        ctx.stroke();
     }
 }
 
-async function fetchState() {
-    const res = await fetch('/state');
+function drawRobots(robots){
+    robots.forEach(r=>{
+        ctx.beginPath();
+        ctx.fillStyle = "#00E5FF";
+        ctx.arc(r.x*CELL+30, r.y*CELL+30, 12, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle="white";
+        ctx.font="12px Arial";
+        ctx.fillText("R"+r.id, r.x*CELL+20, r.y*CELL+50);
+    });
+}
+
+async function fetchState(){
+    const res = await fetch("/state");
     const data = await res.json();
 
-    drawGrid(data);
+    ctx.clearRect(0,0,500,500);
+    drawGrid();
+    drawRobots(data.robots);
 
-    document.getElementById("logs").innerHTML = data.logs.join("<br>");
+    document.getElementById("logs").innerHTML =
+        data.logs.join("<br>");
+
     document.getElementById("metrics").innerHTML = `
-        Conflicts: ${data.metrics.conflicts} <br>
-        Completed Tasks: ${data.metrics.completed_tasks} <br>
-        Efficiency: ${data.metrics.efficiency}% <br>
-        Runtime: ${data.metrics.runtime}s
+        Conflicts: ${data.metrics.conflicts}<br>
+        Tasks Completed: ${data.metrics.total_completed}<br>
+        Efficiency: ${data.metrics.efficiency}%<br>
+        Runtime: ${data.metrics.duration}s
     `;
 }
 
-async function startSimulation() {
-    await fetch('/start', { method: 'POST' });
+async function startSimulation(){
+    await fetch("/start", {method:"POST"});
 }
 
-async function resetSimulation() {
-    await fetch('/reset', { method: 'POST' });
+async function resetSimulation(){
+    await fetch("/reset", {method:"POST"});
 }
 
-setInterval(fetchState, 100);
+setInterval(fetchState, 200);
 fetchState();
 </script>
 

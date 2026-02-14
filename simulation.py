@@ -1,133 +1,113 @@
-import threading
-import time
 import random
+import asyncio
+import time
 
-GRID_POSITIONS = {
-    "Shelf 1": (100, 100),
-    "Shelf 2": (300, 100),
-    "Shelf 3": (200, 250)
-}
-
-HOME_POSITIONS = {
-    "Robot A": (50, 350),
-    "Robot B": (350, 350)
-}
+GRID_SIZE = 8
+NUM_ROBOTS = 5
 
 class Robot:
-    def __init__(self, name):
-        self.name = name
-        self.status = "Idle"
-        self.current_task = None
-        self.x, self.y = HOME_POSITIONS[name]
+    def __init__(self, robot_id):
+        self.id = robot_id
+        self.x = random.randint(0, GRID_SIZE - 1)
+        self.y = random.randint(0, GRID_SIZE - 1)
+        self.status = "IDLE"
+        self.task = None
+        self.completed_tasks = 0
 
-class SimulationEngine:
+class Simulation:
     def __init__(self):
-        self.lock = threading.Lock()
-        self.reset()
-
-    def reset(self):
-        self.robots = {
-            "Robot A": Robot("Robot A"),
-            "Robot B": Robot("Robot B")
-        }
-        self.tasks = ["Shelf 1", "Shelf 2", "Shelf 3"]
+        self.robots = [Robot(i) for i in range(NUM_ROBOTS)]
         self.logs = []
         self.running = False
         self.conflicts = 0
-        self.completed_tasks = 0
         self.start_time = None
 
-    def start(self):
-        with self.lock:
-            if self.running:
-                return
-            self.running = True
-            self.start_time = time.time()
+    def reset(self):
+        self.__init__()
 
-        thread = threading.Thread(target=self.run_simulation)
-        thread.start()
+    async def run(self):
+        if self.running:
+            return
 
-    def move_robot(self, robot, target_x, target_y):
-        steps = 20
-        dx = (target_x - robot.x) / steps
-        dy = (target_y - robot.y) / steps
+        self.running = True
+        self.start_time = time.time()
+        self.logs.append("Simulation started.")
 
-        for _ in range(steps):
-            with self.lock:
-                robot.x += dx
-                robot.y += dy
-            time.sleep(0.05)
+        for robot in self.robots:
+            await self.assign_task(robot)
+            await asyncio.sleep(0.5)
 
-    def run_simulation(self):
-        for task in self.tasks:
-            target_x, target_y = GRID_POSITIONS[task]
+        self.logs.append("Simulation complete.")
+        self.running = False
 
-            with self.lock:
-                r1 = self.robots["Robot A"]
-                r2 = self.robots["Robot B"]
-                r1.status = "Moving"
-                r2.status = "Moving"
-                r1.current_task = task
-                r2.current_task = task
-                self.logs.append(f"Both robots moving to {task}")
+    async def assign_task(self, robot):
+        target_x = random.randint(0, GRID_SIZE - 1)
+        target_y = random.randint(0, GRID_SIZE - 1)
 
-            self.move_robot(r1, target_x, target_y)
-            self.move_robot(r2, target_x, target_y)
+        robot.status = "WORKING"
+        robot.task = f"Shelf ({target_x},{target_y})"
+        self.logs.append(f"Robot {robot.id} assigned to {robot.task}")
 
-            with self.lock:
-                r1.status = "Working"
-                r2.status = "Working"
-                self.logs.append(f"Both robots working on {task}")
+        while robot.x != target_x or robot.y != target_y:
+            await asyncio.sleep(0.2)
 
-                if random.choice([True, False]):
-                    self.conflicts += 1
-                    self.logs.append("Conflict detected")
-                    r2.status = "Reassigned"
-                    r2.current_task = None
-                    self.logs.append("Robot B reassigned")
+            if robot.x < target_x:
+                robot.x += 1
+            elif robot.x > target_x:
+                robot.x -= 1
 
-                self.completed_tasks += 1
+            if robot.y < target_y:
+                robot.y += 1
+            elif robot.y > target_y:
+                robot.y -= 1
 
-            time.sleep(1)
+            if self.detect_conflict(robot):
+                self.conflicts += 1
+                self.logs.append(f"Conflict detected for Robot {robot.id}, re-routing.")
+                break
 
-        with self.lock:
-            for name, r in self.robots.items():
-                r.status = "Idle"
-                r.current_task = None
-                r.x, r.y = HOME_POSITIONS[name]
+        robot.completed_tasks += 1
+        robot.status = "IDLE"
+        robot.task = None
+        self.logs.append(f"Robot {robot.id} completed task.")
 
-            self.logs.append("Simulation complete")
-            self.running = False
+    def detect_conflict(self, current_robot):
+        for robot in self.robots:
+            if robot.id != current_robot.id:
+                if robot.x == current_robot.x and robot.y == current_robot.y:
+                    return True
+        return False
 
     def get_state(self):
-        with self.lock:
-            elapsed = 0
-            if self.start_time:
-                elapsed = round(time.time() - self.start_time, 2)
+        duration = time.time() - self.start_time if self.start_time else 0
+        total_completed = sum(r.completed_tasks for r in self.robots)
 
-            efficiency = 0
-            if self.completed_tasks > 0:
-                efficiency = round(
-                    (self.completed_tasks - self.conflicts) / self.completed_tasks * 100,
-                    2
-                )
+        efficiency = 100
+        if total_completed > 0:
+            efficiency = round(
+                ((total_completed - self.conflicts) / total_completed) * 100,
+                2
+            )
 
-            return {
-                "robots": {
-                    name: {
-                        "status": r.status,
-                        "task": r.current_task,
-                        "x": r.x,
-                        "y": r.y
-                    }
-                    for name, r in self.robots.items()
-                },
-                "logs": self.logs[-12:],
-                "metrics": {
-                    "conflicts": self.conflicts,
-                    "completed_tasks": self.completed_tasks,
-                    "efficiency": efficiency,
-                    "runtime": elapsed
-                },
-                "running": self.running
+        return {
+            "robots": [
+                {
+                    "id": r.id,
+                    "x": r.x,
+                    "y": r.y,
+                    "status": r.status,
+                    "task": r.task,
+                    "completed": r.completed_tasks
+                }
+                for r in self.robots
+            ],
+            "logs": self.logs[-20:],
+            "metrics": {
+                "conflicts": self.conflicts,
+                "duration": round(duration, 2),
+                "total_completed": total_completed,
+                "efficiency": efficiency
             }
+        }
+
+simulation = Simulation()
