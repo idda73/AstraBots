@@ -1,4 +1,12 @@
-\# AstraBots – Simulation-First Robotics Orchestration Platform
+# AstraBots – Simulation-First Robotics Orchestration Platform
+Simulation-first orchestration for autonomous multi-agent systems.
+## 🎥 Demo Video
+[Watch Demo](PASTE_X_POST_LINK_HERE)
+
+## 📊 Pitch Deck
+[View Pitch Deck](PASTE_GOOGLE_DRIVE_LINK_HERE)
+
+---
 
 
 
@@ -77,6 +85,8 @@ Track 2 – Simulation-to-Real Validation
 \## Team Vision
 
 Bridging robotics simulation and production deployment using cloud-native orchestration.
+## Overview
+AstraBots is a simulation-first multi-agent orchestration platform...
 
 
 
